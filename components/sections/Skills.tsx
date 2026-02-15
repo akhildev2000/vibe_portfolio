@@ -32,24 +32,19 @@ export default function Skills() {
                             whileInView={{ opacity: 1, y: 0 }}
                             transition={{ delay: catIndex * 0.2 }}
                             viewport={{ once: true }}
-                            className="bg-[#1A1A1A] p-8 rounded-2xl border border-white/5 hover:border-purple-500/20 transition-colors"
+                            className="bg-[#1A1A1A] p-8 rounded-2xl border border-white/5"
                         >
                             <h3 className="text-xl font-bold mb-6 text-purple-400 border-b border-white/10 pb-2">
                                 {category}
                             </h3>
                             <div className="flex flex-wrap gap-3">
                                 {items.map((skill, index) => (
-                                    <motion.span
+                                    <span
                                         key={index}
-                                        initial={{ opacity: 0, scale: 0.8 }}
-                                        whileInView={{ opacity: 1, scale: 1 }}
-                                        transition={{ delay: (catIndex * 0.1) + (index * 0.05) }}
-                                        whileHover={{ scale: 1.1, backgroundColor: "rgba(255,255,255,0.1)" }}
-                                        viewport={{ once: true }}
-                                        className="px-4 py-2 bg-white/5 rounded-lg text-sm text-gray-300 transition-colors cursor-default"
+                                        className="px-4 py-2 bg-white/5 rounded-lg text-sm text-gray-300 hover:bg-white/10 transition-colors cursor-default"
                                     >
                                         {skill}
-                                    </motion.span>
+                                    </span>
                                 ))}
                             </div>
                         </motion.div>

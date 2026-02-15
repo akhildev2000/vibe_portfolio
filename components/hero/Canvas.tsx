@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MotionValue } from 'framer-motion';
+import { MotionValue, useTransform, motion } from 'framer-motion';
 
 interface CanvasProps {
     scrollYProgress: MotionValue<number>;
@@ -9,141 +9,154 @@ interface CanvasProps {
 
 export default function Canvas({ scrollYProgress }: CanvasProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [images, setImages] = useState<HTMLImageElement[]>([]);
-    const [isLoaded, setIsLoaded] = useState(false);
+    const [imagesLoaded, setImagesLoaded] = useState(false);
+    const [loadProgress, setLoadProgress] = useState(0);
+    const imagesRef = useRef<HTMLImageElement[]>([]);
 
-    // Total frames matching the public/sequence folder
+    // Config
     const frameCount = 192;
 
+    // Hide canvas when scroll is done so it doesn't block lower content
+    const opacity = useTransform(scrollYProgress, [0.95, 1], [1, 0]);
+    // Also toggle pointer events or z-index if needed, but opacity is good start.
+    // To ensure it doesn't overlap footer, we can scale it down or hide it.
+
+    // 1. Preload Images
     useEffect(() => {
+        let isMounted = true;
+
         const loadImages = async () => {
-            const loadedImages: HTMLImageElement[] = [];
+            const promises = [];
+            let loadedCount = 0;
 
-            // Load the first image immediately to show something ASAP
-            const firstImg = new Image();
-            firstImg.src = `/sequence/frame_000.webp`;
-            await new Promise((resolve) => {
-                firstImg.onload = resolve;
-                firstImg.onerror = resolve; // Continue even if error to avoid blocking
-            });
-            loadedImages[0] = firstImg;
-            setImages([firstImg]); // Set immediate state
+            for (let i = 0; i < frameCount; i++) {
+                const img = new Image();
+                const paddedIndex = i.toString().padStart(3, '0');
+                img.src = `/sequence/frame_${paddedIndex}.webp`;
 
-            // Load the rest
-            const loadPromises = Array.from({ length: frameCount }).map((_, i) => {
-                // Skip 0 as it's already loading/loaded
-                if (i === 0) return Promise.resolve(firstImg);
+                promises.push(
+                    new Promise<HTMLImageElement>((resolve) => {
+                        img.onload = () => {
+                            loadedCount++;
+                            if (isMounted) setLoadProgress(Math.round((loadedCount / frameCount) * 100));
+                            resolve(img);
+                        };
+                        img.onerror = () => {
+                            console.warn(`Failed frame: ${i}`);
+                            resolve(img); // Resolve with broken image
+                        };
+                    })
+                );
+            }
 
-                return new Promise<HTMLImageElement | null>((resolve) => {
-                    const img = new Image();
-                    const paddedIndex = i.toString().padStart(3, '0');
-                    img.src = `/sequence/frame_${paddedIndex}.webp`;
-
-                    img.onload = () => resolve(img);
-                    img.onerror = () => {
-                        console.warn(`Failed to load frame ${i}`);
-                        resolve(null);
-                    };
-                });
-            });
-
-            const results = await Promise.all(loadPromises);
-            const filteredResults = results.filter((img): img is HTMLImageElement => img !== null);
-
-            setImages(filteredResults);
-            setIsLoaded(true);
+            const loadedImages = await Promise.all(promises);
+            if (isMounted) {
+                imagesRef.current = loadedImages;
+                setImagesLoaded(true);
+            }
         };
 
         loadImages();
+
+        return () => { isMounted = false; };
     }, []);
 
-    useEffect(() => {
+    // 2. Render Logic
+    const renderFrame = (index: number) => {
         const canvas = canvasRef.current;
-        if (!canvas) return;
+        const images = imagesRef.current;
+        if (!canvas || images.length === 0) return;
 
         const context = canvas.getContext('2d', { alpha: false });
         if (!context) return;
 
+        // Force High Quality
         context.imageSmoothingEnabled = true;
+        context.imageSmoothingQuality = 'high';
 
-        let lastIndex = -1;
-        let animationFrameId: number;
-
-        const render = () => {
-            // Get scroll progress (0 to 1)
-            const progress = scrollYProgress.get();
-
-            // Map progress to frame index
-            // Use (images.length - 1) to ensure we don't go out of bounds
-            const maxIndex = images.length - 1;
-            const index = Math.min(
-                maxIndex,
-                Math.max(0, Math.floor(progress * maxIndex))
-            );
-
-            // Optimize: Draw only if frame changed
-            if (index !== lastIndex) {
-                lastIndex = index;
-                const img = images[index];
-
-                if (img) {
-                    // Canvas dimensions
-                    const canvasWidth = canvas.width;
-                    const canvasHeight = canvas.height;
-
-                    // Draw "Cover" logic
-                    const imgRatio = img.width / img.height;
-                    const canvasRatio = canvasWidth / canvasHeight;
-
-                    let drawWidth, drawHeight, offsetX, offsetY;
-
-                    if (imgRatio > canvasRatio) {
-                        // Image is wider than canvas (crop sides)
-                        drawHeight = canvasHeight;
-                        drawWidth = canvasHeight * imgRatio;
-                        offsetX = (canvasWidth - drawWidth) / 2;
-                        offsetY = 0;
-                    } else {
-                        // Image is taller than canvas (crop top/bottom)
-                        drawWidth = canvasWidth;
-                        drawHeight = canvasWidth / imgRatio;
-                        offsetX = 0;
-                        offsetY = (canvasHeight - drawHeight) / 2;
-                    }
-
-                    // Clear and draw
-                    context.clearRect(0, 0, canvasWidth, canvasHeight);
-                    context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
-                }
-            }
-
-            animationFrameId = requestAnimationFrame(render);
-        };
-
-        // Start render loop
-        render();
-
-        // Handle Resize
-        const handleResize = () => {
+        // Aspect Ratio Handling
+        if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
-            lastIndex = -1; // Force redraw
-            // render() continues via rAF
+        }
+
+        const img = images[index];
+        if (!img) return;
+
+        // "Cover" Fit Logic
+        const canvasAspect = canvas.width / canvas.height;
+        const imgAspect = (img.width || 1920) / (img.height || 1080);
+
+        let drawWidth, drawHeight, offsetX, offsetY;
+
+        if (canvasAspect > imgAspect) {
+            drawWidth = canvas.width;
+            drawHeight = canvas.width / imgAspect;
+            offsetX = 0;
+            offsetY = (canvas.height - drawHeight) / 2;
+        } else {
+            drawHeight = canvas.height;
+            drawWidth = canvas.height * imgAspect;
+            offsetX = (canvas.width - drawWidth) / 2;
+            offsetY = 0;
+        }
+
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+    };
+
+    // 3. Animation Loop
+    useEffect(() => {
+        if (!imagesLoaded) return;
+
+        // Immediately render frame 0
+        renderFrame(0);
+
+        const update = () => {
+            const progress = scrollYProgress.get() || 0;
+            const totalFrames = imagesRef.current.length;
+            // Ensure we clamp between 0 and totalFrames-1
+            const index = Math.min(
+                totalFrames - 1,
+                Math.max(0, Math.floor(progress * (totalFrames - 1)))
+            );
+
+            requestAnimationFrame(() => renderFrame(index));
         };
 
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Initial size
+        // Hook into Framer Motion's change event
+        const unsubscribe = scrollYProgress.on("change", update);
 
-        return () => {
-            window.removeEventListener('resize', handleResize);
-            cancelAnimationFrame(animationFrameId);
-        };
-    }, [images, scrollYProgress]);
+        // Initial render call
+        update();
+
+        return () => unsubscribe();
+    }, [imagesLoaded, scrollYProgress]);
 
     return (
-        <canvas
-            ref={canvasRef}
-            className="absolute inset-0 w-full h-full object-cover z-0 block" // block to remove inline spacing
-        />
+        <>
+            {/* Loading Screen */}
+            {!imagesLoaded && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black text-white">
+                    <div className="text-center">
+                        <div className="text-2xl font-bold mb-2">Loading Experience</div>
+                        <div className="w-64 h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-purple-500 transition-all duration-100 ease-out"
+                                style={{ width: `${loadProgress}%` }}
+                            />
+                        </div>
+                        <div className="mt-2 text-sm text-gray-400">{loadProgress}%</div>
+                    </div>
+                </div>
+            )}
+
+            {/* The Video Canvas - FIXED Position */}
+            <motion.canvas
+                ref={canvasRef}
+                style={{ opacity }}
+                className="fixed top-0 left-0 w-full h-full object-cover z-0 bg-[#121212]"
+            />
+        </>
     );
 }

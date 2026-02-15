@@ -52,29 +52,14 @@ export default function Projects() {
                 </p>
             </div>
 
-            <motion.div
-                className="grid grid-cols-1 md:grid-cols-2 gap-8"
-                initial="hidden"
-                whileInView="show"
-                viewport={{ once: true, margin: "-100px" }}
-                variants={{
-                    hidden: { opacity: 0 },
-                    show: {
-                        opacity: 1,
-                        transition: {
-                            staggerChildren: 0.2
-                        }
-                    }
-                }}
-            >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {projects.map((project, index) => (
                     <motion.div
                         key={index}
-                        variants={{
-                            hidden: { opacity: 0, y: 50 },
-                            show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 50 } }
-                        }}
-                        whileHover={{ scale: 1.02, y: -5 }}
+                        initial={{ opacity: 0, y: 30 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1, duration: 0.5 }}
+                        viewport={{ once: true }}
                         className="group relative bg-[#1E1E1E] rounded-2xl overflow-hidden border border-white/5 hover:border-purple-500/30 transition-colors"
                     >
                         <div className="h-64 bg-gradient-to-br from-gray-800 to-gray-900 group-hover:scale-105 transition-transform duration-500 flex items-center justify-center">
@@ -112,7 +97,7 @@ export default function Projects() {
                         </div>
                     </motion.div>
                 ))}
-            </motion.div>
+            </div>
         </Section>
     );
 }

@@ -6,22 +6,17 @@ import { Mail, Phone, MapPin, ArrowRight } from 'lucide-react';
 
 export default function Contact() {
     return (
-        <Section id="contact" className="bg-[#121212] text-white py-32 relative overflow-hidden">
-            {/* Background Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 to-transparent pointer-events-none" />
-
-            <div className="grid md:grid-cols-2 gap-16 relative z-10">
-                <motion.div
-                    initial={{ opacity: 0, x: -50 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8 }}
-                    viewport={{ once: true }}
-                >
-                    <h2
+        <Section id="contact" className="bg-[#121212] text-white py-32">
+            <div className="grid md:grid-cols-2 gap-16">
+                <div>
+                    <motion.h2
+                        initial={{ opacity: 0, y: 20 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
                         className="text-5xl md:text-7xl font-bold mb-8 leading-tight"
                     >
                         Let's build <br /> something <span className="text-purple-500">great.</span>
-                    </h2>
+                    </motion.h2>
                     <p className="text-xl text-gray-400 mb-12 max-w-md">
                         I'm currently available for freelance projects and full-time opportunities.
                     </p>
@@ -48,14 +43,13 @@ export default function Contact() {
                             <span className="text-lg">Trivandrum, Kerala</span>
                         </div>
                     </div>
-                </motion.div>
+                </div>
 
                 <motion.form
-                    initial={{ opacity: 0, x: 50 }}
+                    initial={{ opacity: 0, x: 20 }}
                     whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.8, delay: 0.2 }}
                     viewport={{ once: true }}
-                    className="space-y-6 bg-[#1A1A1A] p-8 rounded-3xl border border-white/5 shadow-2xl"
+                    className="space-y-6 bg-[#1A1A1A] p-8 rounded-3xl border border-white/5"
                     onSubmit={(e) => e.preventDefault()}
                 >
                     <div>
@@ -82,13 +76,9 @@ export default function Contact() {
                             placeholder="Tell me about your project..."
                         ></textarea>
                     </div>
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-purple-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-purple-500/20"
-                    >
+                    <button className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-purple-500 hover:text-white transition-all duration-300 flex items-center justify-center gap-2">
                         Send Message <ArrowRight size={20} />
-                    </motion.button>
+                    </button>
                 </motion.form>
             </div>
         </Section>

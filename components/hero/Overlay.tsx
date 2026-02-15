@@ -8,13 +8,6 @@ interface OverlayProps {
 
 export default function Overlay({ scrollYProgress }: OverlayProps) {
     // Animation Phases
-    // 0.0 - 0.2: Intro Name
-    // 0.2 - 0.3: Fade out Name
-    // 0.3 - 0.5: Second Message
-    // 0.5 - 0.6: Fade out Second
-    // 0.6 - 0.8: Third Message
-    // 0.8 - 1.0: Fade out All
-
     const opacity1 = useTransform(scrollYProgress, [0.05, 0.2, 0.25], [1, 1, 0]);
     const y1 = useTransform(scrollYProgress, [0, 0.25], [0, -50]);
 
@@ -24,13 +17,16 @@ export default function Overlay({ scrollYProgress }: OverlayProps) {
     const opacity3 = useTransform(scrollYProgress, [0.55, 0.65, 0.85, 0.9], [0, 1, 1, 0]);
     const y3 = useTransform(scrollYProgress, [0.55, 0.9], [50, -50]);
 
-    // Global Fade Out (0.9 - 1.0) to ensure no overlap with next section
+    // Fade out everything when section ends
     const globalOpacity = useTransform(scrollYProgress, [0.9, 1], [1, 0]);
+
+    // Hide pointer events when faded out
+    const pointerEvents = useTransform(scrollYProgress, (v) => v > 0.95 ? 'none' : 'auto');
 
     return (
         <motion.div
-            style={{ opacity: globalOpacity }}
-            className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center p-4 fixed"
+            style={{ opacity: globalOpacity, pointerEvents }}
+            className="fixed inset-0 z-10 flex items-center justify-center p-4 w-full h-full"
         >
             {/* Slide 1 */}
             <motion.div
